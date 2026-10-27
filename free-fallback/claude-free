@@ -1,0 +1,31 @@
+#!/bin/bash
+# claude-free: run real Claude Code on a free backend when your Claude limits are hit.
+#   claude-free                 -> local Ollama model (offline, private, slower)
+#   claude-free --openrouter    -> OpenRouter free models (needs key in ~/.openrouter_key)
+#   CLAUDE_FREE_MODEL=...       -> override the model
+# Runs inside ~/claude-free-sandbox unless you are already in a project folder you pass with -C <dir>.
+set -euo pipefail
+mode=local; dir=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --openrouter) mode=openrouter; shift;;
+    -C) dir="$2"; shift 2;;
+    *) break;;
+  esac
+done
+unset ANTHROPIC_API_KEY
+if [[ $mode == local ]]; then
+  model="${CLAUDE_FREE_MODEL:-qwen2.5-coder:14b}"
+  curl -sf http://localhost:11434/api/version >/dev/null || { (ollama serve >/dev/null 2>&1 &); sleep 3; }
+  export ANTHROPIC_BASE_URL=http://localhost:11434 ANTHROPIC_AUTH_TOKEN=ollama
+else
+  [[ -s ~/.openrouter_key ]] || { echo "Put your OpenRouter key in ~/.openrouter_key (chmod 600) first: https://openrouter.ai/keys"; exit 1; }
+  model="${CLAUDE_FREE_MODEL:-qwen/qwen3-coder:free}"
+  export ANTHROPIC_BASE_URL=https://openrouter.ai/api ANTHROPIC_AUTH_TOKEN="$(cat ~/.openrouter_key)"
+fi
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$model" ANTHROPIC_DEFAULT_SONNET_MODEL="$model" ANTHROPIC_DEFAULT_OPUS_MODEL="$model" CLAUDE_CODE_SUBAGENT_MODEL="$model"
+dir="${dir:-$HOME/claude-free-sandbox}"; mkdir -p "$dir"; cd "$dir"
+# --bare: no plugins/hooks/MCP/skills, so a small local model is not buried in a huge system prompt
+lean=(--bare --strict-mcp-config --disable-slash-commands)
+[[ $mode == openrouter && -z "${CLAUDE_FREE_LEAN:-}" ]] && lean=()
+exec claude ${lean[@]+"${lean[@]}"} --model "$model" "$@"

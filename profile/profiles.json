@@ -1,0 +1,25 @@
+{
+ "core": [
+  "profile@shon-mods",
+  "effort-router@shon-mods",
+  "sharpen@shon-mods",
+  "output-cap@shon-mods",
+  "paste-dedupe@shon-mods",
+  "cost-band@shon-mods"
+ ],
+ "trading": [
+  "prereg@shon-mods",
+  "claim-check@shon-mods",
+  "holdout-vault@shon-mods",
+  "long-run@shon-mods"
+ ],
+ "business": [
+  "marketing@knowledge-work-plugins",
+  "sales@knowledge-work-plugins"
+ ],
+ "coding": [
+  "superpowers@claude-plugins-official",
+  "code-review@claude-plugins-official",
+  "frontend-design@claude-plugins-official"
+ ]
+}

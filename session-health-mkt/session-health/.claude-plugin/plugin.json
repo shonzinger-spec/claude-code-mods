@@ -1,0 +1,1 @@
+{ "name": "session-health", "version": "0.1.0", "author": { "name": "Shon Zinger" }, "description": "Warns when a session is too worn to trust (context fill, compactions, tool errors) and saves a verified handoff + checks CLAUDE.md before you switch.", "types": "./types/index.d.ts" }

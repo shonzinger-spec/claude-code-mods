@@ -1,0 +1,1 @@
+{ "name": "local-session-health", "owner": { "name": "Shon Zinger" }, "plugins": [ { "name": "session-health", "source": "./session-health", "description": "Real warning to start a new session, with verified handoff" } ] }

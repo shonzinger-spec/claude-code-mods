@@ -1,0 +1,74 @@
+{
+  "name": "shon-mods",
+  "description": "Claude Code mods by Shon Zinger: hooks, panes, bands and slash commands",
+  "owner": {
+    "name": "Shon Zinger"
+  },
+  "plugins": [
+    {
+      "name": "effort-router",
+      "source": "./effort-router",
+      "description": "Picks effort and ultracode per prompt (Haiku + calibration, keyword fallback); !low..!max, !ultra, !solo overrides"
+    },
+    {
+      "name": "output-cap",
+      "source": "./output-cap",
+      "description": "Bash results over 150 lines: Claude reads the first and last 75 with a note of how many were cut"
+    },
+    {
+      "name": "paste-dedupe",
+      "source": "./paste-dedupe",
+      "description": "A paste repeated from an earlier prompt this session is sent as \"same as message N\""
+    },
+    {
+      "name": "cost-band",
+      "source": "./cost-band",
+      "description": "Session $ and cache ratio in the status line; amber band from a nudge cost (default $15), red at the limit (default $20)"
+    },
+    {
+      "name": "session-health",
+      "source": "./session-health-mkt/session-health",
+      "description": "Rates the session ok/caution/new-session and offers a verified handoff"
+    },
+    {
+      "name": "profile",
+      "source": "./profile",
+      "description": "/profile: switch which plugin set loads next session"
+    },
+    {
+      "name": "sharpen",
+      "source": "./sharpen",
+      "description": "Turns a rough idea into a full brief before Claude works (auto for 15+ words, ++ to force, -- to skip, /sharpen for other AIs)"
+    },
+    {
+      "name": "folder-guard",
+      "source": "./folder-guard",
+      "description": "Refuses new files loose in ~, ~/Desktop, ~/Documents"
+    },
+    {
+      "name": "long-run",
+      "source": "./long-run",
+      "description": "Sends long backtests to the background and notifies when they finish"
+    },
+    {
+      "name": "prereg",
+      "source": "./prereg",
+      "description": "/prereg with SHA256, and a lock on pre-registrations once results exist"
+    },
+    {
+      "name": "claim-check",
+      "source": "./claim-check",
+      "description": "Toasts PF/Sharpe/win-rate/t numbers in a reply that no tool output backs; /claims"
+    },
+    {
+      "name": "holdout-vault",
+      "source": "./holdout-vault",
+      "description": "Seals listed holdout files: read-only, opening one asks and logs a burn"
+    },
+    {
+      "name": "autorank-pane",
+      "source": "./autorank-pane",
+      "description": "/autorank: follow-ups due, first touches, replies and leads"
+    }
+  ]
+}
