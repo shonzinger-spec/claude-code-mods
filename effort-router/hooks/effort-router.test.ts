@@ -214,7 +214,7 @@ test('/effort-router off stops routing, on resumes it', async ($, on) => {
 test('an ultracode job gets the opt-in note and a toast when ultracode is off', async ($, on) => {
   const seen: any = {}
   engine(on, seen, { haiku: 'medium' })
-  await say($, 'can we rerun all of the experiments again and check if the results changed')
+  await say($, 'can we rerun all of the strats again and check if the results changed')
   await step($)
   expect(notes(seen)).toContain('effort-router: ultracode job')
   expect(seen.toasts.join('\n')).toContain('ultracode')
@@ -246,9 +246,9 @@ test('ultracode the user switched on mid-session is left alone', async ($, on) =
 test('!solo drops the job note and !ultra adds one', async ($, on) => {
   const seen: any = {}
   engine(on, seen, { haiku: 'medium' })
-  await say($, '!solo rerun all of the experiments again')
+  await say($, '!solo rerun all of the strats again')
   expect(notes(seen)).toBe('')
-  expect(seen.prompts.at(-1).text).toBe('rerun all of the experiments again')
+  expect(seen.prompts.at(-1).text).toBe('rerun all of the strats again')
   await say($, '!ultra tidy the docs folder')
   expect(notes(seen)).toContain('effort-router: ultracode job')
   expect(seen.prompts.at(-1).text).toBe('tidy the docs folder')
@@ -268,7 +268,7 @@ test('a bare "continue" keeps an ultracode job going; on its own it is not one',
 test('with ultracode.auto off the router only suggests', async ($, on) => {
   const seen: any = {}
   engine(on, seen, { haiku: 'medium', config: '{"ultracode":{"auto":false}}', msgs: SESSION_DEFAULT })
-  await say($, 'rerun all of the experiments again')
+  await say($, 'rerun all of the strats again')
   expect(notes(seen)).toBe('')
   expect(seen.toasts.join('\n')).toContain('!ultra')
   const r = await $.prompt.compose(COMPOSE as any)
@@ -288,4 +288,85 @@ test('a failing hook never blocks the prompt', async ($, on) => {
   engine(on, seen, { storeDown: true })
   await say($, 'make the header bold')
   expect(seen.prompts.at(-1).text).toBe('make the header bold')
+})
+
+test('"can we please continue here" is a follow-up: never below medium, keeps the last level', async ($, on) => {
+  const seen: any = {}
+  const o: Opts = { haiku: 'low' }
+  engine(on, seen, o)
+  await say($, 'can we please continue here')
+  await step($)
+  expect(seen.efforts).toEqual(['medium'])
+  o.haiku = 'high'
+  await say($, 'investigate why the fills differ from the broker')
+  await step($)
+  o.haiku = 'low'
+  await say($, 'can we please continue here')
+  await step($)
+  expect(seen.efforts).toEqual(['medium', 'high', 'high'])
+})
+
+test('"can u pls continue" is a follow-up too', async ($, on) => {
+  const seen: any = {}
+  engine(on, seen, { haiku: 'low' })
+  await say($, 'can u pls continue')
+  await step($)
+  expect(['medium', 'high', 'xhigh']).toContain(seen.efforts[0])
+})
+
+test('a breadth phrase inside a long pasted prompt is not an ultracode job', async ($, on) => {
+  const seen: any = {}
+  engine(on, seen, { haiku: 'high' })
+  const filler = Array.from({ length: 210 }, (_, i) => `word${i}`).join(' ')
+  await say($, `${filler} we should go through all of the strats at some point`)
+  expect(notes(seen)).toBe('')
+})
+
+test('a short breadth request is still an ultracode job at high or above', async ($, on) => {
+  const seen: any = {}
+  engine(on, seen, { haiku: 'medium' })
+  await say($, 'can u go through all of the strats again')
+  await step($)
+  expect(notes(seen)).toContain('ultracode job')
+  expect(['high', 'xhigh']).toContain(seen.efforts[0])
+})
+
+test('a hand-off to a new session runs at its own level, without the follow-up floor or the last ultracode job', async ($, on) => {
+  const seen: any = {}
+  const o: Opts = { haiku: 'high ultracode' }
+  engine(on, seen, o)
+  await say($, 'go through all of the variations possible')
+  await step($)
+  o.haiku = 'low'
+  await say($, 'lets continue this in a new session')
+  await step($)
+  expect(seen.efforts).toEqual(['high', 'low'])
+  expect(notes(seen)).toBe('')
+  expect(seen.status.at(-1)).toContain('hand-off')
+})
+
+test('"add all of them to a new session" is a hand-off, not an ultracode job', async ($, on) => {
+  const seen: any = {}
+  engine(on, seen, { haiku: 'low' })
+  await say($, 'yes, add all of them to a new session')
+  await step($)
+  expect(seen.efforts).toEqual(['low'])
+  expect(notes(seen)).toBe('')
+})
+
+test('Haiku down: a hand-off to a new session is low', async ($, on) => {
+  const seen: any = {}
+  engine(on, seen, { down: true })
+  await say($, 'ok, lets do it in a different session. give me the prompt for that')
+  await step($)
+  expect(seen.efforts).toEqual(['low'])
+})
+
+test('a longer request that only mentions a new session keeps the usual rules', async ($, on) => {
+  const seen: any = {}
+  engine(on, seen, { haiku: 'medium' })
+  await say($, 'go through all of the strats again and then write a short summary I can paste into a new session')
+  await step($)
+  expect(notes(seen)).toContain('ultracode job')
+  expect(['high', 'xhigh']).toContain(seen.efforts[0])
 })

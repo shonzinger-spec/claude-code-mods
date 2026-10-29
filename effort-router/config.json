@@ -1,7 +1,8 @@
 {
  "ack": "^(thanks|thank you|thx|ty|nice|great|cool|perfect|awesome|amazing|got it|noted)( (so much|a lot|again))?[.! ]*$",
- "followUp": "^(yes|yep|yeah|y|ok|okay|sure|go|go ahead|do it|lets do it|let's do it|please do|build it|try again|do everything|do both|do all|ship it|lgtm|sounds good|proceed|continue|keep going|carry on|lets continue|let's continue|please continue|can (u|you) continue)\\b",
+ "followUp": "^(yes|yep|yeah|y|ok|okay|sure|go|go ahead|do it|lets do it|let's do it|please do|build it|try again|do everything|do both|do all|ship it|lgtm|sounds good|proceed|continue|keep going|carry on|lets continue|let's continue|please continue|can (u|you|we)( please| pls)? continue)\\b",
  "continuation": "^((ok|okay|yes|yep|yeah|sure|please)[ ,.!]*)?((lets|let's|please|pls|can (u|you)|go ahead and)\\s+)?(continue|keep going|carry on|go on|proceed|resume)\\b",
+ "handoff": "\\b((in|into|to|for|on) (a |an |the )?(new|fresh|next|another|separate|different|other)|(start|open|begin|spin up) (a |an )?(new|fresh|separate|different|another)) (session|chat|window|conversation|thread)s?\\b",
  "low": [
   "\\btypos?\\b",
   "\\brename\\b",
@@ -74,7 +75,10 @@
   "\\bas (the )?orchestrator\\b"
  ],
  "folders": {
-  "~/research": "high"
+  "~/Trading": "high",
+  "~/propfarm-2026": "high",
+  "~/competition": "high",
+  "~/.claude/mods-src": "medium"
  },
  "ultracode": {
   "auto": true,

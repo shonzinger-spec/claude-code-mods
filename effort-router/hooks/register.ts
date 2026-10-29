@@ -9,6 +9,8 @@ export type Config = {
   ack: string
   followUp: string
   continuation: string
+  /** A short prompt that moves the work to another session or chat: this turn only writes the hand-off. */
+  handoff: string
   low: string[]
   medium: string[]
   high: string[]
@@ -29,14 +31,15 @@ const PREFIX = /^\s*!(low|med|medium|high|hard|xhigh|max|ultra|ultracode|solo)\b
 // Mirrors config.json (generated from this); config.json wins key by key.
 export const DEFAULTS: Config = {
   ack: "^(thanks|thank you|thx|ty|nice|great|cool|perfect|awesome|amazing|got it|noted)( (so much|a lot|again))?[.! ]*$",
-  followUp: "^(yes|yep|yeah|y|ok|okay|sure|go|go ahead|do it|lets do it|let's do it|please do|build it|try again|do everything|do both|do all|ship it|lgtm|sounds good|proceed|continue|keep going|carry on|lets continue|let's continue|please continue|can (u|you) continue)\\b",
+  followUp: "^(yes|yep|yeah|y|ok|okay|sure|go|go ahead|do it|lets do it|let's do it|please do|build it|try again|do everything|do both|do all|ship it|lgtm|sounds good|proceed|continue|keep going|carry on|lets continue|let's continue|please continue|can (u|you|we)( please| pls)? continue)\\b",
   continuation: "^((ok|okay|yes|yep|yeah|sure|please)[ ,.!]*)?((lets|let's|please|pls|can (u|you)|go ahead and)\\s+)?(continue|keep going|carry on|go on|proceed|resume)\\b",
+  handoff: "\\b((in|into|to|for|on) (a |an |the )?(new|fresh|next|another|separate|different|other)|(start|open|begin|spin up) (a |an )?(new|fresh|separate|different|another)) (session|chat|window|conversation|thread)s?\\b",
   low: ["\\btypos?\\b", "\\brename\\b", "\\breword\\b", "\\bbump\\b", "\\bspelling\\b", "\\bformat(ting)?\\b", "\\bone[- ]liner\\b", "\\bquick (fix|tweak|edit)\\b", "\\b(give|write) me a (prompt|handoff)\\b", "\\bwhat does .{1,40} mean\\b", "\\bis it (still )?(running|going|done)\\b"],
   medium: ["\\b(add|implement|build|write|create|update|wire|hook up|port|convert|install|set up|setup|draft|deploy)\\b"],
   high: ["\\bdebug", "\\broot cause\\b", "\\bwhy (does|is|did)\\b", "\\bdesign\\b", "\\barchitect", "\\bbacktest", "\\blook-?ahead\\b", "\\bleak", "\\bout[- ]of[- ]sample\\b", "\\boos\\b", "\\bprereg", "\\boverfit", "\\bstrat(s|egy|egies)?\\b", "\\bsweeps?\\b", "\\bedge\\b", "\\baudit\\b", "\\breview\\b", "\\binvestigat", "\\banaly[sz]", "\\brace condition\\b", "\\bdeadlock\\b", "\\bflaky\\b", "\\btrade-?offs?\\b", "\\brefactor\\b"],
   stakes: ["\\breal money\\b", "\\blive (account|accounts|capital|trading|orders?|executor|bot)\\b", "\\bfunded account", "\\bsecurity\\b", "\\bvulnerab", "\\bcredentials?\\b", "\\btakeover\\b", "\\bexploit", "\\birreversible\\b", "\\bdata loss\\b", "\\bdrop (table|database)\\b", "\\bforce[- ]push\\b", "\\bproduction (db|database|data)\\b", "\\bthink (very )?hard\\b", "\\bhigh[- ]stakes\\b", "\\bformal(ly)? verif"],
   breadth: ["\\b(all|every|each) (of )?(the |these |those |my |our )?(strats?|strateg(y|ies)|variations?|variants?|settings|families|tests?|papers|videos|files|mods|jobs|tasks|items|sources|ideas)\\b", "\\ball (of )?(them|these|those)\\b", "\\b(go|dig|look) (through|into) (all|every|everything)\\b", "\\b(re-?run|redo|re-?test|test|check|audit|port|finish|sweep|scan) (all|every|everything)\\b", "\\beverything (that )?(we|weve|we've|u|you) (have |had )?(done|did|tested|built|tried)\\b", "\\bwhole (business|codebase|repo|project|program|system|pipeline)\\b", "\\buntil (u|you|we) find\\b", "\\b\\d{2,}\\+? (strats?|strateg(y|ies)|variants?|files|videos|items|prompts|tests|configs)\\b", "\\bas (the )?orchestrator\\b"],
-  folders: { "~/research": "high" },
+  folders: { "~/Trading": "high", "~/propfarm-2026": "high", "~/competition": "high", "~/.claude/mods-src": "medium" },
   ultracode: { auto: true, governSession: true },
   haiku: true,
 }
@@ -100,17 +103,22 @@ export function parseGuess(answer: string): Guess | undefined {
   return m ? { level: m[1] as Level, ultracode: /\bultracode\b/i.test(answer) } : undefined
 }
 
+/** A short prompt that moves the work to another session or chat ("lets do it in a new session"). */
+export const deferred = (t: string, n: number, c: Config) => n <= 14 && !!c.handoff && re(c.handoff).test(t)
+
 /** Keyword rules, used when Haiku is off or did not answer. */
 export function rules(own: string, prev: string, last: Plan | undefined, c: Config, folder?: Level): { level: Level; reason: string } {
   const n = words(own)
   const s = first(c.stakes, own)
   if (s) return { level: 'xhigh', reason: `stakes: ${s}` }
-  if (n <= 14 && re(c.followUp).test(own.trim())) {
+  const handoff = deferred(own.trim(), n, c)
+  if (!handoff && n <= 14 && re(c.followUp).test(own.trim())) {
     const ctx = first(c.stakes, prev) ? 'xhigh' : first(c.high, prev) ? 'high' : undefined
     return { level: atLeast(ctx ?? last?.level ?? 'medium', 'medium'), reason: 'follow-up' }
   }
   const h = first(c.high, own)
   if (h) return { level: 'high', reason: `judgment: ${h}` }
+  if (handoff) return { level: 'low', reason: 'hand-off to a new session' }
   const l = first(c.low, own)
   if (l && n <= 25) return { level: 'low', reason: `small: ${l}` }
   if (n <= 15 && /\?\s*$/.test(own.trim())) return { level: 'low', reason: 'quick question' }
@@ -134,19 +142,23 @@ export function decide(own: string, prev: string, last: Plan | undefined, guess:
     level = 'xhigh'
     reason = `stakes: ${stake}`
   }
+  // "lets do it in a new session": the work moves elsewhere, so no follow-up floor and no ultracode for this turn.
+  const handoff = deferred(t, n, c)
   // "continue", "try again", "do it" start the work just discussed: never below medium, nor below the last plan.
-  const continuing = n <= 8 && re(c.continuation).test(t)
-  if (n <= 14 && re(c.followUp).test(t)) {
+  const continuing = !handoff && n <= 8 && re(c.continuation).test(t)
+  if (!handoff && n <= 14 && re(c.followUp).test(t)) {
     const floor = atLeast(last && last.level !== 'max' ? last.level : 'medium', 'medium')
     if (rank(level) < rank(floor)) {
       level = floor
       reason = 'follow-up'
     }
   }
-  const breadth = first(c.breadth, own)
+  // A breadth phrase inside a long pasted handoff, transcript or spec is a passing mention, not the ask.
+  const breadth = n <= 200 ? first(c.breadth, own) : undefined
   const carry = continuing && !!last?.ultracode
   // A bare "continue" keeps the last job's mode; Haiku reads it as multi-part too often.
-  const ultracode = continuing ? carry : !!guess?.ultracode || !!breadth
+  const ultracode = handoff ? false : continuing ? carry : !!guess?.ultracode || !!breadth
+  if (handoff && !stake) reason = 'hand-off to a new session'
   if (ultracode) {
     level = atLeast(level, 'high')
     reason = breadth ? `breadth: ${breadth}` : carry ? 'continuing the ultracode job' : 'multi-part job'
@@ -224,6 +236,19 @@ async function session($: EngineInterface): Promise<{ prev: string; ultra: Ultra
   return { prev: lastAssistantText(list), ultra: ultraState(list) }
 }
 
+// Tiny file the hud mod reads. Never throws and never changes routing.
+let sessionId = ''
+async function publish($: EngineInterface, level: string, ultracode: boolean, reason: string, source: 'auto' | 'forced' | 'yours'): Promise<void> {
+  try {
+    if (!sessionId) sessionId = String(await $.session.id())
+    const dir = `${(await $.env.get('HOME')) ?? ''}/.claude/mods-src/effort-router/state`
+    await $.process.run(['/bin/sh', '-c', 'mkdir -p "$1"', 'sh', dir], { timeoutMs: 5000 })
+    await $.fs.write(`${dir}/now-${sessionId}.json`, JSON.stringify({ level, ultracode, reason, source, at: Date.now() }))
+  } catch {
+    // the hud is optional
+  }
+}
+
 const show = (p: Plan) => `effort: ${p.level}${p.ultracode ? ' + ultracode' : ''} · ${p.reason}`
 
 export const register: Register = on => {
@@ -232,6 +257,11 @@ export const register: Register = on => {
       name: 'effort-router',
       description: 'Per-prompt effort + ultracode routing: /effort-router on|off. Prefix a prompt with !low !med !high !xhigh !max !ultra !solo to force.',
     })
+    try {
+      sessionId = String(await $.session.id())
+    } catch {
+      // resolved lazily on first write
+    }
     return next(e)
   })
 
@@ -284,6 +314,7 @@ export const register: Register = on => {
     plan = p
     last = p
     $.ui.status(show(p))
+    void publish($, p.level, p.ultracode, p.reason, p.forced ? 'forced' : 'auto')
     const notes: string[] = []
     if (p.ultracode && (c.ultracode.auto || p.ultraForced)) {
       if (s.ultra === 'off') notes.push(ultraNote(p.reason))
@@ -306,7 +337,10 @@ export const register: Register = on => {
     const changed = e.effort !== baseline
     if (changed !== paused) {
       paused = changed
-      if (changed) $.ui.status(`effort: ${e.effort} (yours) · router paused`)
+      if (changed) {
+        $.ui.status(`effort: ${e.effort} (yours) · router paused`)
+        void publish($, e.effort, false, 'router paused', 'yours')
+      }
     }
     if (!plan || (changed && !plan.forced) || e.effort === plan.level) return yield* next(e)
     return yield* next({ ...e, effort: plan.level })
